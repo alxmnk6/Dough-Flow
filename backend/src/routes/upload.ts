@@ -1,11 +1,18 @@
 import { Router, Request, Response } from 'express';
 import multer, { Multer } from 'multer';
 import fs from 'fs/promises';
+import path from 'path';
 import pdf from 'pdf-parse';
 import Transaction from '../models/Transaction';
 
 const router = Router();
-const upload: Multer = multer({ dest: 'uploads/' });
+
+// Create uploads directory
+const uploadDir = path.join(process.cwd(), 'uploads');
+fs.mkdir(uploadDir, { recursive: true })
+  .catch(err => console.error('Error creating uploads directory:', err));
+
+const upload: Multer = multer({ dest: uploadDir });
 
 interface MulterRequest extends Request {
     file?: Express.Multer.File;
@@ -17,22 +24,12 @@ router.post('/pdf', upload.single('file'), async (req: MulterRequest, res: Respo
             return res.status(400).json({ error: 'No file uploaded' });
         }
 
-        // Read the uploaded PDF file
         const dataBuffer = await fs.readFile(req.file.path);
-        
-        // Parse PDF content
         const data = await pdf(dataBuffer);
-        
-        // Extract text content
         const text = data.text;
         
-        // Implement parsing logic here
         const transactions = parseTransactions(text);
-
-        // Save transactions to MongoDB
         await Transaction.insertMany(transactions);
-
-        // Clean up: delete the uploaded file
         await fs.unlink(req.file.path);
 
         res.json({ 
@@ -47,11 +44,8 @@ router.post('/pdf', upload.single('file'), async (req: MulterRequest, res: Respo
 });
 
 function parseTransactions(text: string): any[] {
-    // Implement your parsing logic here
-    // Example: Split text by lines and extract transaction details
     const lines = text.split('\n');
-    const transactions = lines.map(line => {
-        // Example parsing logic
+    return lines.map(line => {
         const [date, description, amount] = line.split(' ');
         return {
             date: new Date(date),
@@ -61,7 +55,6 @@ function parseTransactions(text: string): any[] {
             userId: "test-user"
         };
     });
-    return transactions;
 }
 
 export default router; 

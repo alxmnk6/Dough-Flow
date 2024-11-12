@@ -39,4 +39,4 @@ try {
     });
 } catch (error) {
   console.error('❌ MongoDB connection error:', error);
-}
+} 
